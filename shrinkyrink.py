@@ -35,7 +35,9 @@ def sign_up(target_date, target_time, username, password):
 
     auth = login.json()
 
-    client_key = auth['environmentInfo']['userProxy']['clientAccountKey']
+    user_proxy = auth['environmentInfo']['userProxy']
+    client_key = user_proxy['clientAccountKey']
+    pam_key = user_proxy['objKey']
 
     auth_header = "Bearer %s" % auth['authToken']
     auth_headers = {
@@ -48,11 +50,11 @@ def sign_up(target_date, target_time, username, password):
 
     account_key = client['client']['ownerAccountMemberKey']
 
-    sessions = session.post("https://skatebowl.com/signup/sandboxes/sbx~00~300/choicesForParticipant/biz~00~CQcAAAAAAAA~YAQ/pam~00~BQoAAAAAAAA~YAM", data=json.dumps({
+    sessions = session.post("https://skatebowl.com/signup/sandboxes/sbx~00~300/choicesForParticipant/biz~00~CQcAAAAAAAA~YAQ/%s" % pam_key, data=json.dumps({
         "choiceFetchedRels": ["course","location"],
         "currentChoiceSelections": [],
         "includeCurrent": True,
-        "participant": auth['environmentInfo']['userProxy'],
+        "participant": user_proxy,
         "lightweightObjects": True
     }), headers=auth_headers).json()
 
@@ -130,6 +132,7 @@ def sign_up(target_date, target_time, username, password):
             }
         ]
 
+    exit()
     pricing = session.post(
         "https://skatebowl.com/signup/sandboxes/sbx~00~300/pricing",
         headers=auth_headers,
@@ -143,7 +146,7 @@ def sign_up(target_date, target_time, username, password):
             "transactionId": transaction_id,
             "trxRequestPayments": None,
             "userAccount": client['client'],
-            "userProxy": auth['environmentInfo']['userProxy'],
+            "userProxy": user_proxy,
         })
     ).json()
 
@@ -197,7 +200,7 @@ def sign_up(target_date, target_time, username, password):
                 }
             ],
             "userAccount": client['client'],
-            "userProxy": auth['environmentInfo']['userProxy'],
+            "userProxy": user_proxy,
         })
     )
 
