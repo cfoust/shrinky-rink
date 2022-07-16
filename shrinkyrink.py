@@ -35,14 +35,16 @@ def sign_up(target_date, target_time, username, password):
 
     auth = login.json()
 
+    client_key = auth['environmentInfo']['userProxy']['clientAccountKey']
+
     auth_header = "Bearer %s" % auth['authToken']
     auth_headers = {
         "Authorization": auth_header
     }
 
-    members = session.get("https://skatebowl.com/sandboxes/sbx~00~300/account/pac~00~BQoAAAAAAAA~XwM/members", headers=auth_headers).json()
+    members = session.get("https://skatebowl.com/sandboxes/sbx~00~300/account/%s/members" % client_key, headers=auth_headers).json()
 
-    client = session.get("https://skatebowl.com/accounting/sandboxes/sbx~00~300/client/pac~00~BQoAAAAAAAA~XwM/billing?openTrxOnly=true&excludeVoidTrx=true", headers=auth_headers).json()
+    client = session.get("https://skatebowl.com/accounting/sandboxes/sbx~00~300/client/%s/billing?openTrxOnly=true&excludeVoidTrx=true" % client_key, headers=auth_headers).json()
 
     account_key = client['client']['ownerAccountMemberKey']
 
@@ -89,8 +91,6 @@ def sign_up(target_date, target_time, username, password):
 
     # Initiate the transaction
     transaction_id = session.get('https://skatebowl.com/sysapi/transaction?sandboxKey=sbx~00~300', headers=auth_headers).json()
-
-    client_key = auth['environmentInfo']['userProxy']['clientAccountKey']
 
     billing_info = session.get(
         "https://skatebowl.com/payments/sandboxes/sbx~00~300/nmiBillingEntries/Business/biz~00~CQcAAAAAAAA~YAQ/ClientAccount/%s" % client_key,
@@ -148,7 +148,6 @@ def sign_up(target_date, target_time, username, password):
     ).json()
 
     grand_total = pricing['grandTotal']
-    print('cost', grand_total)
     transaction = session.post(
         "https://skatebowl.com/payments/sandboxes/:sandboxKey/nmiInitiateSale/Business/biz~00~CQcAAAAAAAA~YAQ?billingId=%s&payerKey=%s&payerType=ClientAccount&amount=%d&sandboxKey=sbx~00~300" % (billing_id, client_key, grand_total),
         headers=auth_headers,
@@ -202,6 +201,9 @@ def sign_up(target_date, target_time, username, password):
         })
     )
 
+    if enroll.status_code != 200:
+        raise ShrinkyException('Failed to enroll')
+
 if __name__ == '__main__':
     args = sys.argv[1:]
 
@@ -210,7 +212,7 @@ if __name__ == '__main__':
         exit(1)
 
     target_date = date.today()
-    username = sys.argv[0]
-    password = sys.argv[1]
-    target_time = sys.argv[2]
+    username = args[0]
+    password = args[1]
+    target_time = args[2]
     sign_up(target_date, target_time, username, password)
