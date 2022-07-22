@@ -132,6 +132,7 @@ def sign_up(target_date, target_time, username, password):
             }
         ]
 
+    role_keys = auth['user']['scopeAccess'][0]['roleKeys']
     pricing = session.post(
         "https://skatebowl.com/signup/sandboxes/sbx~00~300/pricing",
         headers=auth_headers,
@@ -141,7 +142,7 @@ def sign_up(target_date, target_time, username, password):
             "clientAccountKey": client_key,
             "notificationTemplateKey": "",
             "participants": members,
-            "roleKeys": auth['user']['roleKeys'],
+            "roleKeys": role_keys,
             "transactionId": transaction_id,
             "trxRequestPayments": None,
             "userAccount": client['client'],
@@ -185,13 +186,13 @@ def sign_up(target_date, target_time, username, password):
             "notificationTemplateKey": "",
             "participants": members,
             "preAuthResult": preauth,
-            "roleKeys": auth['user']['roleKeys'],
+            "roleKeys": role_keys,
             "transactionId": transaction_id,
             "trxRequestPayments": [
                 {
                     "amount": grand_total,
                     "gatewayBillingInfo": simple_billing_info,
-                    "gatewayEmailAddress": client['client']['emailDep'],
+                    "gatewayEmailAddress": client['client']['ownerEmailView'],
                     "gatewayPreauthResult": preauth,
                     "paymentId": "gateway",
                     "paymentMethodDetails": "",
@@ -209,7 +210,7 @@ def sign_up(target_date, target_time, username, password):
 if __name__ == '__main__':
     args = sys.argv[1:]
 
-    if len(args) != 3:
+    if len(args) < 3:
         print('You must provide your username, password, and desired time.')
         exit(1)
 
@@ -217,4 +218,12 @@ if __name__ == '__main__':
     username = args[0]
     password = args[1]
     target_time = args[2]
+
+    if len(args) == 4:
+        username = args[0]
+        password = args[1]
+        target_date = datetime.strptime(args[2], "%d.%m.%y")
+        target_date = date(target_date.year, target_date.month, target_date.day)
+        target_time = args[3]
+
     sign_up(target_date, target_time, username, password)
