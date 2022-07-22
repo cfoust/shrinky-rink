@@ -132,7 +132,6 @@ def sign_up(target_date, target_time, username, password):
             }
         ]
 
-    exit()
     pricing = session.post(
         "https://skatebowl.com/signup/sandboxes/sbx~00~300/pricing",
         headers=auth_headers,
