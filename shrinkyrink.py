@@ -3,8 +3,8 @@ import json
 import requests
 import re
 import sys
+from common import ShrinkyException
 
-class ShrinkyException(Exception): pass
 
 def validate(_time, _date=None):
     if not re.match("^\d\d:\d\d$", _time):
