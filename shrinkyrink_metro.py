@@ -35,9 +35,9 @@ def sign_up(target_date, target_time, cookie):
 
     auth = info['props']['initialState']['auth']['user']
     auth_spread = {
-        "os-token-id": auth['os-token-id'],
+        "os-token-id": str(auth['os-token-id']),
         "os-token-value": auth['os-token-value'],
-        "os-user-id": auth['os-user-id'],
+        "os-user-id": str(auth['os-user-id']),
     }
 
     sessions = session.get("https://osapi.opensports.ca/app/posts/listFiltered", params={
