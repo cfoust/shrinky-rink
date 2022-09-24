@@ -7,6 +7,9 @@ import json
 import re
 import requests
 import sys
+from pytz import utc, timezone
+
+EASTERN = timezone('US/Eastern')
 
 from common import ShrinkyException
 
@@ -49,8 +52,9 @@ def log_in(cookie):
 
 
 def build_session(data):
-    time = datetime.strptime(data['start'][:16], "%Y-%m-%dT%H:%M")
+    time = utc.localize(datetime.strptime(data['start'][:16], "%Y-%m-%dT%H:%M"))
     return Session(data['id'], time, data)
+
 
 def get_sessions(handle):
     session, auth, auth_spread = handle
@@ -199,6 +203,7 @@ if __name__ == '__main__':
     handle = log_in(cookie)
 
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = today.astimezone(utc)
 
     days = list(map(lambda i: today + timedelta(days = i), list(range(0, 7))))
 
@@ -242,7 +247,7 @@ if __name__ == '__main__':
         for start, session_pair in enumerate(day_sessions):
             session, enrolled = session_pair
 
-            for end in range(start + 2, start + 4):
+            for end in range(start + 2, start + 5):
                 training_sessions = day_sessions[start:end]
 
                 if len(training_sessions) != (end - start): continue
@@ -260,8 +265,8 @@ if __name__ == '__main__':
 
                 # Format title
                 training_title = "{}-{} ({}) {}".format(
-                    training_sessions[0][0].time.strftime("%I:%M%p"),
-                    (training_sessions[-1][0].time + timedelta(minutes = 30)).strftime("%I:%M%p"),
+                    training_sessions[0][0].time.astimezone(EASTERN).strftime("%I:%M%p"),
+                    (training_sessions[-1][0].time.astimezone(EASTERN) + timedelta(minutes = 30)).strftime("%I:%M%p"),
                     len(training_sessions),
                     "".join(list(map(lambda v: '|' if v[1] else '.', training_sessions)))
                 )

@@ -1,4 +1,5 @@
-requests
-flask
 bs4
+flask
 inquirer
+pytz
+requests
