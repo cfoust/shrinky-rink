@@ -274,6 +274,8 @@ if __name__ == '__main__':
                     (training_title, training_sessions)
                 )
 
+        training_choices = sorted(training_choices, key=lambda v: v[1][0][0].time - timedelta(days=len(v[1])))
+
         training_sessions = inquirer.list_input(
             "Choose a training session",
             choices=training_choices
