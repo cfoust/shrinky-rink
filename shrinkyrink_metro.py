@@ -89,6 +89,40 @@ def get_enrolled(handle):
     return freestyles
 
 
+def cancel(handle, target):
+    session, auth, auth_spread = handle
+
+    data = session.get(
+        "https://opensports.net/api/posts/loadOne?aliasID=%s" % target.data['aliasID'],
+        headers={
+            "buildnumber": "202070",
+            "content-type": "application/json",
+            "source": "oswebsite",
+            **auth_spread
+        },
+    )
+
+    if data.status_code != 200:
+        raise ShrinkyException('Call to hold failed')
+
+    data = data.json()['result']
+
+    for order in data['userOrders']:
+        response = session.post("https://osapi.opensports.ca/app/posts/cancelOrder",
+            headers={
+                "buildnumber": "202070",
+                "content-type": "application/json",
+                "source": "oswebsite",
+                **auth_spread
+            },
+            data=json.dumps(
+                {
+                    "orderID": order['id'],
+                }
+            )
+        )
+
+
 def sign_up(handle, target):
     data = target.data
     session, auth, auth_spread = handle
@@ -276,10 +310,23 @@ if __name__ == '__main__':
 
         training_choices = sorted(training_choices, key=lambda v: v[1][0][0].time - timedelta(days=len(v[1])))
 
+        training_choices = [
+            ('Cancel all', [])
+        ] + training_choices
+
         training_sessions = inquirer.list_input(
             "Choose a training session",
             choices=training_choices
         )
+
+        chosen_set = set(list(map(lambda v: v[0].id, training_sessions)))
+
+        for session, _ in day_sessions:
+            if (
+                session.id in enrolled_set and
+                session.id not in chosen_set
+            ):
+                cancel(handle, session)
 
         for session, enrolled in training_sessions:
             if enrolled: continue
