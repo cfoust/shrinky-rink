@@ -138,7 +138,8 @@ def sign_up(handle, target):
         raise ShrinkyException('Already enrolled in session.')
 
     summary = data['ticketsSummary'][0]
-    hold = session.post("https://osapi.opensports.ca/app/posts/insertHold",
+
+    complete = session.post("https://osapi.opensports.ca/app/posts/insertOrder",
         headers={
             "buildnumber": "202070",
             "content-type": "application/json",
@@ -147,49 +148,6 @@ def sign_up(handle, target):
         },
         data=json.dumps(
             {
-                "currency": "USD",
-                "attendeeSummary": [
-                    {
-                        "ticketClassID": summary['id'],
-                        "isFlexible": False,
-                        "schemaResponse": {
-                            "Do they have a lesson at this time?": "No",
-                            "Who is skating? List only one skater here. Add guests to add additional skaters.": "%s %s" % (auth['firstName'], auth['lastName'])
-                        },
-                        "userID": int(auth['os-user-id']),
-                        "userSummary": {
-                            "firstName": auth['firstName'],
-                            "lastName": auth['lastName'],
-                            "userID": int(auth['os-user-id'])
-                        }
-                    }
-                ],
-                "totalPriceInCents": summary['price'] * 100,
-                "postID": target.id
-            }
-        )
-    )
-
-    if hold.status_code != 200:
-        raise ShrinkyException('Call to hold failed')
-
-    hold = hold.json()
-
-    if hold['response'] != 200:
-        raise ShrinkyException('Holding session failed')
-
-    complete = session.post("https://osapi.opensports.ca/app/posts/completeHoldOrder",
-        headers={
-            "buildnumber": "202070",
-            "content-type": "application/json",
-            "source": "oswebsite",
-            **auth_spread
-        },
-        data=json.dumps(
-            {
-                "orderID": hold['result']['orderID'],
-                "holdExpiry": hold['result']['holdExpiry'],
-                "holdKey": hold['result']['holdKey'],
                 "currency": "USD",
                 "attendeeSummary": [
                     {
@@ -224,6 +182,7 @@ def sign_up(handle, target):
     if complete['response'] != 200:
         raise ShrinkyException('Signup failed')
 
+CUT_TIME = timedelta(minutes = 10)
 
 if __name__ == '__main__':
     args = sys.argv[1:]
@@ -281,28 +240,41 @@ if __name__ == '__main__':
         for start, session_pair in enumerate(day_sessions):
             session, enrolled = session_pair
 
-            for end in range(start + 2, start + 5):
+            for end in range(start + 2, start + 6):
                 training_sessions = day_sessions[start:end]
 
                 if len(training_sessions) != (end - start): continue
 
+                cuts = []
+
                 # Training sessions need to be contiguous
                 is_contiguous = True
                 for first, second in zip(training_sessions, training_sessions[1:]):
-                    if (
-                            second[0].time - (first[0].time + timedelta(minutes = 30))
-                    ) > timedelta(minutes = 10):
+                    first_end = (first[0].time + timedelta(minutes = 30))
+                    second_start = second[0].time
+                    difference = second_start - first_end
+
+                    if difference == CUT_TIME:
+                        cuts.append(
+                            "{}-{}".format(
+                                first_end.astimezone(EASTERN).strftime("%I:%M%p"),
+                                second_start.astimezone(EASTERN).strftime("%I:%M%p"),
+                            )
+                        )
+
+                    if difference > CUT_TIME:
                         is_contiguous = False
                         break
 
                 if not is_contiguous: continue
 
                 # Format title
-                training_title = "{}-{} ({}) {}".format(
+                training_title = "{}-{} ({}) {} {}".format(
                     training_sessions[0][0].time.astimezone(EASTERN).strftime("%I:%M%p"),
                     (training_sessions[-1][0].time.astimezone(EASTERN) + timedelta(minutes = 30)).strftime("%I:%M%p"),
                     len(training_sessions),
-                    "".join(list(map(lambda v: '|' if v[1] else '.', training_sessions)))
+                    "".join(list(map(lambda v: '|' if v[1] else '.', training_sessions))),
+                    ', '.join(cuts) if cuts else ''
                 )
                 training_choices.append(
                     (training_title, training_sessions)
