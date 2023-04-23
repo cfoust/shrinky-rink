@@ -27,7 +27,8 @@ def sign_up(target_date, target_time, username, password):
         "username": username,
         "password": password,
         "siteID": "skatebowl",
-        "navKey": directory['scopeNavKey'],
+        # "navKey": directory['scopeNavKey'],
+        "navKey": "",
     }))
 
     if login.status_code != 200:
@@ -58,7 +59,7 @@ def sign_up(target_date, target_time, username, password):
         "lightweightObjects": True
     }), headers=auth_headers).json()
 
-    freestyles = list(filter(lambda a: 'Freestyle Session' in a['choice']['name'] and a['meetingStartTime'] == target_time, sessions))
+    freestyles = list(filter(lambda a: 'Freestyle' in a['choice']['name'] and a['meetingStartTime'] == target_time, sessions))
 
     if not freestyles:
         raise ShrinkyException('Failed to find freestyles for time.')
@@ -95,7 +96,7 @@ def sign_up(target_date, target_time, username, password):
     transaction_id = session.get('https://skatebowl.com/sysapi/transaction?sandboxKey=sbx~00~300', headers=auth_headers).json()
 
     billing_info = session.get(
-        "https://skatebowl.com/payments/sandboxes/sbx~00~300/nmiBillingEntries/Business/biz~00~CQcAAAAAAAA~YAQ/ClientAccount/%s" % client_key,
+        "https://skatebowl.com/payments/sandboxes/sbx~00~300/nmiBillingEntries/Organization/org~YB~CQcAAAAAAAA~YQQ/AccountMember/%s" % pam_key,
         headers=auth_headers
     )
 
@@ -152,13 +153,12 @@ def sign_up(target_date, target_time, username, password):
 
     grand_total = pricing['grandTotal']
     transaction = session.post(
-        "https://skatebowl.com/payments/sandboxes/:sandboxKey/nmiInitiateSale/Business/biz~00~CQcAAAAAAAA~YAQ?billingId=%s&payerKey=%s&payerType=ClientAccount&amount=%d&sandboxKey=sbx~00~300" % (billing_id, client_key, grand_total),
+        "https://skatebowl.com/payments/sandboxes/:sandboxKey/nmiInitiateSale/Organization/org~YB~CQcAAAAAAAA~YQQ?billingId=%s&payerKey=%s&payerType=AccountMember&amount=%d&sandboxKey=sbx~00~300" % (billing_id, pam_key, grand_total),
         headers=auth_headers,
         data=json.dumps(simple_billing_info)
     )
 
     transaction = transaction.json()
-
     form_url = transaction['gatewayResponse']['formUrl']
     nmi = session.get(form_url)
     token = form_url.split('/')[-1]
@@ -180,7 +180,7 @@ def sign_up(target_date, target_time, username, password):
         headers=auth_headers,
         data=json.dumps({
             "addOnProducts": [],
-            "businessKey": "biz~00~CQcAAAAAAAA~YAQ",
+            "organizationKey": "org~YB~CQcAAAAAAAA~YQQ",
             "clientAccountKey": client_key,
             "notificationStyle": None,
             "notificationTemplateKey": "",
@@ -205,6 +205,7 @@ def sign_up(target_date, target_time, username, password):
     )
 
     if enroll.status_code != 200:
+        print(enroll.text)
         raise ShrinkyException('Failed to enroll')
 
 if __name__ == '__main__':
