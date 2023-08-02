@@ -13,6 +13,13 @@ def validate(_time, _date=None):
     if _date and not re.match("^\d\d.\d\d.\d\d$", _date):
         raise ShrinkyException('Date is in invalid format')
 
+def is_freestyle(name):
+    if (
+        'Freestyle' in name or
+        '60-min' in name.lower() or
+        '90-min' in name.lower()
+    ): return True
+    return False
 
 def sign_up(target_date, target_time, username, password):
     session = requests.Session()
@@ -59,7 +66,7 @@ def sign_up(target_date, target_time, username, password):
         "lightweightObjects": True
     }), headers=auth_headers).json()
 
-    freestyles = list(filter(lambda a: 'Freestyle' in a['choice']['name'] and a['meetingStartTime'] == target_time, sessions))
+    freestyles = list(filter(lambda a: is_freestyle(a['choice']['name']) and a['meetingStartTime'] == target_time, sessions))
 
     if not freestyles:
         raise ShrinkyException('Failed to find freestyles for time.')

@@ -184,14 +184,46 @@ def sign_up(handle, target):
 
 CUT_TIME = timedelta(minutes = 10)
 
+
+def read_template(path):
+    template = []
+    with open(path, 'r') as f:
+        for i, row in enumerate(f.read().split('\n')):
+            if i > 6 or not row: continue
+
+            start, sessions = row.split(' ')
+            start = datetime.strptime(start, '%I:%M%p')
+            sessions = int(sessions)
+            template.append((i, start, sessions))
+    return template
+
+
+def check_contiguous(sessions):
+    is_contiguous = True
+    for first, second in zip(sessions, sessions[1:]):
+        first_end = (first.time + timedelta(minutes = 30))
+        second_start = second.time
+        difference = second_start - first_end
+
+        if difference > CUT_TIME:
+            is_contiguous = False
+            break
+
+    return is_contiguous
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
 
-    if len(args) != 1:
+    cookie = args[0]
+    template  = None
+
+    if len(args) == 2:
+        template = read_template(args[0])
+        cookie = args[1]
+    elif len(args) != 1:
         print('You must provide a cookie.')
         exit(1)
-
-    cookie = args[0]
 
     handle = log_in(cookie)
 
@@ -201,6 +233,47 @@ if __name__ == '__main__':
     days = list(map(lambda i: today + timedelta(days = i), list(range(0, 7))))
 
     sessions = get_sessions(handle)
+
+    if template:
+        enrolled_sessions = get_enrolled(handle)
+        enrolled_set = set(list(map(lambda v: v.id, enrolled_sessions)))
+        lookup = { x[0]: (x[1], x[2]) for x in template }
+
+        chosen_set = set()
+
+        for day in days:
+            if day.weekday() not in lookup: continue
+
+            start, num_sessions = lookup[day.weekday()]
+            start_time = day + timedelta(hours=start.hour, minutes=start.minute)
+
+            day_end = day + timedelta(days = 1)
+            day_sessions = list(filter(lambda v: v.time > day and v.time < day_end, sessions))
+            day_sessions = sorted(day_sessions, key=lambda v: v.time)
+
+            for i, session in enumerate(day_sessions):
+                if session.time != start_time: continue
+
+                choices = day_sessions[i:i+num_sessions]
+                is_contiguous = check_contiguous(choices)
+
+                if len(choices) < num_sessions or not is_contiguous:
+                    print(f"Failed to find compatible session for {day.weekday()}")
+                    continue
+
+                for choice in choices: chosen_set.add(choice.id)
+
+
+        for session in sessions:
+            if session.id in enrolled_set:
+                if session.id not in chosen_set:
+                    cancel(handle, session)
+                continue
+
+            if session.id in chosen_set:
+                sign_up(handle, session)
+
+        exit(0)
 
     while True:
         enrolled_sessions = get_enrolled(handle)
@@ -240,7 +313,7 @@ if __name__ == '__main__':
         for start, session_pair in enumerate(day_sessions):
             session, enrolled = session_pair
 
-            for end in range(start + 2, start + 6):
+            for end in range(start + 2, start + 5):
                 training_sessions = day_sessions[start:end]
 
                 if len(training_sessions) != (end - start): continue
